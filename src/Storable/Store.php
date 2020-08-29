@@ -2,10 +2,13 @@
 
 namespace Storable;
 
+use Countable;
+use ArrayAccess;
 use Illuminate\Support\Arr;
 use Storable\Contracts\FileManagerInterface;
+use Illuminate\Contracts\Config\Repository as RepositoryContract;
 
-class Store
+class Store implements ArrayAccess, Countable, RepositoryContract
 {
     /**
      * Name of temporary JSON file where all key, value pairs will be stored.
@@ -27,47 +30,36 @@ class Store
     }
 
     /**
-     * Put a value in the store.
+     * Determine if the given configuration value exists.
      *
      * @param string $key
-     * @param mixed  $value
      *
-     * @return \Storable\Store
+     * @return bool
      */
-    public function put(string $key, $value): Store
+    public function has($key)
     {
-        $store = $this->all();
-
-        if (is_null(Arr::get($store, $key))) {
-            Arr::set($store, $key, $value);
-        }
-
-        $this->setContent($store);
-
-        return $this;
+        return Arr::has($this->all(), $key);
     }
 
     /**
-     * Get a value from the store.
+     * Get the specified configuration value.
      *
-     * @param string $name
-     * @param mixed  $default
+     * @param array|string $key
+     * @param mixed        $default
      *
      * @return mixed
      */
-    public function get(string $name, $default = null)
+    public function get($key, $default = null)
     {
-        $all = $this->all();
-
-        return Arr::get($all, $name, $default);
+        return Arr::get($this->all(), $key, $default);
     }
 
     /**
-     * Get all values from the store.
+     * Get all of the configuration items for the application.
      *
      * @return array
      */
-    public function all(): array
+    public function all()
     {
         if (!file_exists($this->file)) {
             return [];
@@ -77,6 +69,148 @@ class Store
             $this->createFileManager()->read(),
             JSON_OBJECT_AS_ARRAY
         ) ?: [];
+    }
+
+    /**
+     * Set a given configuration value.
+     *
+     * @param array|string $key
+     * @param mixed        $value
+     *
+     * @return void
+     */
+    public function set($key, $value = null)
+    {
+        if ($key === []) {
+            return;
+        }
+
+        $store = $this->all();
+
+        if (is_array($key)) {
+            foreach ($key as $innerKey => $innerValue) {
+                Arr::set($store, $innerKey, $innerValue);
+            }
+        } else {
+            Arr::set($store, $key, $value);
+        }
+
+        $this->setContent($store);
+    }
+
+    /**
+     * Prepend a value onto an array configuration value.
+     *
+     * @param string $key
+     * @param mixed  $value
+     *
+     * @return void
+     */
+    public function prepend($key, $value)
+    {
+        $array = Arr::wrap($this->get($key));
+
+        array_unshift($array, $value);
+
+        $this->set($key, $array);
+    }
+
+    /**
+     * Push a value onto an array configuration value.
+     *
+     * @param string $key
+     * @param mixed  $value
+     *
+     * @return void
+     */
+    public function push($key, $value)
+    {
+        $array = Arr::wrap($this->get($key));
+
+        $array[] = $value;
+
+        $this->set($key, $array);
+    }
+
+    /**
+     * Forget a value from the store.
+     *
+     * @param string $key
+     *
+     * @return void
+     */
+    public function forget(string $key)
+    {
+        $newContent = $this->all();
+
+        unset($newContent[$key]);
+
+        $this->setContent($newContent);
+    }
+
+    /**
+     * Flush all values from the store.
+     *
+     * @return $this
+     */
+    public function flush()
+    {
+        return $this->setContent([]);
+    }
+
+    /**
+     * Whether a offset exists.
+     *
+     * @param mixed $offset
+     *
+     * @return bool
+     */
+    public function offsetExists($offset)
+    {
+        return $this->has($offset);
+    }
+
+    /**
+     * Offset to retrieve.
+     *
+     * @param mixed $offset
+     *
+     * @return mixed
+     */
+    public function offsetGet($offset)
+    {
+        return $this->get($offset);
+    }
+
+    /**
+     * Offset to set.
+     *
+     * @param mixed $offset
+     * @param mixed $value
+     */
+    public function offsetSet($offset, $value)
+    {
+        $this->set($offset, $value);
+    }
+
+    /**
+     * Offset to unset.
+     *
+     * @param mixed $offset
+     */
+    public function offsetUnset($offset)
+    {
+        $this->forget($offset);
+    }
+
+    /**
+     * Count elements.
+     *
+     * @return int
+     */
+    public function count()
+    {
+        return count($this->all());
     }
 
     /**
