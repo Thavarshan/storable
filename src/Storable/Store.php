@@ -140,11 +140,11 @@ class Store implements ArrayAccess, Countable, RepositoryContract
      */
     public function forget(string $key)
     {
-        $newContent = $this->all();
+        $store = $this->all();
 
-        unset($newContent[$key]);
+        unset($store[$key]);
 
-        $this->setContent($newContent);
+        $this->setContent($store);
     }
 
     /**
