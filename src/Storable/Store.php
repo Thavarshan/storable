@@ -5,7 +5,6 @@ namespace Storable;
 use Countable;
 use ArrayAccess;
 use Illuminate\Support\Arr;
-use Storable\Contracts\FileManagerInterface;
 use Illuminate\Contracts\Config\Repository as RepositoryContract;
 
 class Store implements ArrayAccess, Countable, RepositoryContract
@@ -220,7 +219,7 @@ class Store implements ArrayAccess, Countable, RepositoryContract
      *
      * @return \Storable\Store
      */
-    protected function setContent(array $values): Store
+    protected function setContent(array $values)
     {
         $this->createFileManager()->write(json_encode($values));
 
@@ -236,7 +235,7 @@ class Store implements ArrayAccess, Countable, RepositoryContract
      *
      * @return \Storable\Contracts\FileManagerInterfaces
      */
-    protected function createFileManager(): FileManagerInterface
+    protected function createFileManager()
     {
         return new FileManager($this->file);
     }
