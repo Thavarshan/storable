@@ -37,6 +37,6 @@
         "preferred-install": "dist"
     },
     "scripts": {
-        "test": "phpunit --colors=always --verbose=true"
+        "test": "vendor/bin/phpunit --colors=always --verbose"
     }
 }
